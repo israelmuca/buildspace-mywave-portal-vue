@@ -53,7 +53,8 @@
           <div class="media-content">
             <div class="content">
               <p>
-                <strong>{{ wave.address }}</strong> <small>{{ formatDate(wave.timestamp) }} ago</small>
+                <a :href="`https://rinkeby.etherscan.io/address/${wave.address}`" target="_blank">
+                <strong>{{ minimizeAccount(wave.address) }}</strong></a> <small>said {{ formatDate(wave.timestamp) }} ago</small>
                 <br>
                 {{ wave.message }}
               </p>
@@ -75,7 +76,7 @@ import { abi } from "./utils/WavePortal.json"
 import { formatDistance } from 'date-fns'
 
 const { ethereum } = window;
-const contractAddress = "0x4fc38f31d3945c85ed31f74d90e83a49d7124aa8";
+const contractAddress = "0x5ca4C72b671c14a4bFF7deCaEE0bbdd6dfff42C3";
 
 
 export default {
@@ -103,10 +104,7 @@ export default {
     },
 
     accountMinimized(){
-      const firstLetters = this.account.slice(0, 5);
-      const lastLetters = this.account.slice(-5);
-
-      return `${firstLetters}...${lastLetters}`;
+     return this.minimizeAccount(this.account);
     }
   },
 
@@ -117,6 +115,13 @@ export default {
   },
 
   methods: {
+    minimizeAccount(account){
+      const firstLetters = account.slice(0, 5);
+      const lastLetters = account.slice(-5);
+
+      return `${firstLetters}...${lastLetters}`;
+    },
+
     getWallet(){
       ethereum.request({method: "eth_accounts"})
       .then((accounts) => {
@@ -183,22 +188,31 @@ export default {
       let count = await waveportalContract.getTotalWaves();
       console.log("Total wave count: ", count.toNumber());
 
-      const waveTxn = await waveportalContract.wave(this.message);
-      console.log("Mining... ", waveTxn.hash);
-      this.isMining = true;
+      try {
+        const waveTxn = await waveportalContract.wave(this.message);
+        console.log("Mining... ", waveTxn.hash);
+        this.isMining = true;
 
-      await waveTxn.wait();
-      console.log("Mined! ", waveTxn.hash);
-      this.isMining = false;
-      this.message = "";
+        await waveTxn.wait();
+        console.log("Mined! ", waveTxn.hash);
+        this.isMining = false;
+        this.message = "";
 
-      this.$buefy.toast.open({
-          message: 'Your transaction has been mined!',
-          type: 'is-success'
-      })
+        this.$buefy.toast.open({
+            message: 'Your transaction has been mined!',
+            type: 'is-success'
+        })
 
-      count = await waveportalContract.getTotalWaves();
-      console.log("New total wave count: ", count.toNumber());
+        count = await waveportalContract.getTotalWaves();
+        console.log("New total wave count: ", count.toNumber());
+        
+      } catch (error) {
+        this.$buefy.toast.open({
+            message: `${error.error.message}`,
+            type: 'is-danger',
+            duration: 5000
+        })
+      }
 
       this.getAllWaves();
     },
