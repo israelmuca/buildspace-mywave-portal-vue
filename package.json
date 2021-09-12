@@ -10,6 +10,7 @@
   "dependencies": {
     "buefy": "^0.9.10",
     "core-js": "^3.6.5",
+    "date-fns": "^2.23.0",
     "ethers": "^5.4.6",
     "vue": "^2.6.11"
   },

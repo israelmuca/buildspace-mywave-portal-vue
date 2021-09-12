@@ -23,14 +23,46 @@
        </div>
      </div>
 
-     <!-- Wave Button -->
-     <div class="columns">
-       <div class="column is-12">
-         <b-button type="is-primary" expanded :loading="isMining" @click="wave" :disabled="!isConnected">
-           {{ !isConnected ? "Please connect your metamask account" : isMining ? "Mining..." : "Wave here!" }}
+     <!-- Textbox & Wave Button -->
+     <div class="columns" v-if="isConnected">
+      <!-- Wave Textbox -->
+      <div class="column is-8">
+        <b-input v-model="message" :disabled="isMining"/>
+      </div>
+
+       <!-- Wave Button -->
+       <div class="column is-4">
+         <b-button type="is-primary" expanded :loading="isMining" @click="wave">
+           {{ isMining ? "Mining..." : "Wave here!" }}
          </b-button>
        </div>
      </div>
+
+     <div class="columns" v-else>
+       <div class="column is-12">
+         <p class="is-size-6 has-text-centered has-text-weight-light">
+           Please connect metamask to interact with this Web3 app
+         </p>
+       </div>
+     </div>
+
+     <!-- Existing waves -->
+     <section v-if="isConnected" class="section">
+       <div class="container">
+         <article class="media" v-for="(wave, i) in allWaves" :key="i">
+          <div class="media-content">
+            <div class="content">
+              <p>
+                <strong>{{ wave.address }}</strong> <small>{{ formatDate(wave.timestamp) }} ago</small>
+                <br>
+                {{ wave.message }}
+              </p>
+            </div>
+          </div>
+        </article>
+       </div>
+     </section>
+
     </div>
     </section>
   </div>
@@ -38,10 +70,12 @@
 
 <script>
 import { ethers } from "ethers";
-import {abi} from "./utils/WavePortal.json"
+import { abi } from "./utils/WavePortal.json"
 
-const {ethereum} = window;
-const contractAddress = "0x79FF8435C41aca64B4b71AF3D5b1Af9c5deaebb5";
+import { formatDistance } from 'date-fns'
+
+const { ethereum } = window;
+const contractAddress = "0x4438F2B89C637268E736a65425af72aFe8Dbb142";
 
 
 export default {
@@ -53,9 +87,13 @@ export default {
       ethereum: ethereum,
 
 
+      message: "",
+
       account: null,
 
       isMining: false,
+
+      allWaves: []
     }
   },
 
@@ -65,8 +103,8 @@ export default {
     },
 
     accountMinimized(){
-      const firstLetters = this.account.slice(0, 4);
-      const lastLetters = this.account.slice(-4);
+      const firstLetters = this.account.slice(0, 5);
+      const lastLetters = this.account.slice(-5);
 
       return `${firstLetters}...${lastLetters}`;
     }
@@ -85,6 +123,9 @@ export default {
         if(accounts.length !== 0) {
           // this.account = accounts[0]
           console.log(accounts[0]);
+
+          // Get waves
+          this.getAllWaves();
         }
       })
       .catch((err) => console.error(err));
@@ -98,7 +139,7 @@ export default {
       .catch(err => console.error(err));
     },
 
-    async wave(){
+    getContractData() {
       const provider = new ethers.providers.Web3Provider(this.ethereum);
       console.log(provider);
       const signer = provider.getSigner();
@@ -106,19 +147,61 @@ export default {
       const waveportalContract = new ethers.Contract(this.contractAddress, this.contractABI, signer);
       console.log(waveportalContract);
 
+      return {
+        provider,
+        signer,
+        waveportalContract
+      }
+    },
+
+    async getAllWaves(){
+      this.allWaves = [];
+
+      const { waveportalContract } = this.getContractData();
+
+      const waves = await waveportalContract.getAllWaves();
+
+      const allWaves = waves.map(wave => {
+        return {
+          address: wave.waver,
+          timestamp: new Date(wave.timestamp * 1000),
+          message: wave.message
+        }
+      })
+
+      this.allWaves = allWaves.reverse();
+    },
+
+    async wave(){
+      const { waveportalContract } = this.getContractData();
+
       let count = await waveportalContract.getTotalWaves();
       console.log("Total wave count: ", count.toNumber());
 
-      const waveTxn = await waveportalContract.wave();
+      const waveTxn = await waveportalContract.wave(this.message);
       console.log("Mining... ", waveTxn.hash);
       this.isMining = true;
 
       await waveTxn.wait();
       console.log("Mined! ", waveTxn.hash);
       this.isMining = false;
+      this.message = "";
+
+      this.$buefy.toast.open({
+          message: 'Your transaction has been mined!',
+          type: 'is-success'
+      })
 
       count = await waveportalContract.getTotalWaves();
       console.log("New total wave count: ", count.toNumber());
+
+      this.getAllWaves();
+    },
+
+    formatDate(date){
+      const today = new Date();
+
+      return formatDistance(date, today);
     }
   }
 }
