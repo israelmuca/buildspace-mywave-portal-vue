@@ -26,8 +26,8 @@
      <!-- Wave Button -->
      <div class="columns">
        <div class="column is-12">
-         <b-button type="is-primary" expanded :loading="isMining" @click="wave">
-           {{ isMining ? "Mining..." : "Wave here!" }}
+         <b-button type="is-primary" expanded :loading="isMining" @click="wave" :disabled="!isConnected">
+           {{ !isConnected ? "Please connect your metamask account" : isMining ? "Mining..." : "Wave here!" }}
          </b-button>
        </div>
      </div>
