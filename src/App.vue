@@ -75,7 +75,7 @@ import { abi } from "./utils/WavePortal.json"
 import { formatDistance } from 'date-fns'
 
 const { ethereum } = window;
-const contractAddress = "0x4438F2B89C637268E736a65425af72aFe8Dbb142";
+const contractAddress = "0x4fc38f31d3945c85ed31f74d90e83a49d7124aa8";
 
 
 export default {
@@ -146,6 +146,11 @@ export default {
       console.log(signer);
       const waveportalContract = new ethers.Contract(this.contractAddress, this.contractABI, signer);
       console.log(waveportalContract);
+
+      // Console log the events? not sure...
+      waveportalContract.on("newWave", (author, oldValue, newValue, event) => {
+        console.log({ author, oldValue, newValue, event });
+      })
 
       return {
         provider,
